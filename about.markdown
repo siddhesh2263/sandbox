@@ -4,6 +4,8 @@ title: About
 permalink: /about/
 ---
 
-I'm a graduate student at the George Washington University. I started this blog as a space for sharing technical and programming-related content.
+For the main site content, head [here][main-content].
 
-Still in its early stages, I will be building more complex projects over time.
+This site is to test out if the content I'm working on, is displayed properly.
+
+[main-content]: https://siddhesh2263.github.io/portfolio/

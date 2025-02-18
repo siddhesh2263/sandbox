@@ -462,6 +462,7 @@ In the previous notes, we discussed that messages have vector clocks attached to
 1. If a message sent by P1 is delivered at P2, increment P2's local clock in the P1 position.
 2. If a message is sent by a process, first increment its own position in its local clock, and include the local clock along with the message.
 3. A message sent by a process P1 is only delivered at P2 if, for the message's timestamp T (vector clock):
+
 ```
 T[P1] = VC[P1] + 1 AND T[Pk] <= VC[Pk].
 

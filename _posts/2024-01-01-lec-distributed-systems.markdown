@@ -402,7 +402,7 @@ Totally-ordered delivery operates differently. It branches out, meaning that a s
 
 #### Implementing FIFO delivery:
 
-##### Approach 1:
+#### Approach 1:
 A typical approach would be by using sequence numbers (SN). Messages get tagged with a seqence number from the sender, along with a sender ID. The sender increments its sequence number after sending. If a received message's SN is the (SN + 1) of the previously delivered message from that sender, deliver it. Otherwise, it is queued up for later.
 What are some situation this approach would not work? A case would be when the message gets lost, or is very slow to reach the receiver.
 
@@ -420,7 +420,7 @@ In such cases, we can use buffers. Messages that arrive out of order are tempora
 
 <br/>
 
-##### Approach 2:
+#### Approach 2:
 We can implement FIFO delivery using acknowledgments. Assume there are two processes, A and B. A sends a message to B, and once B receives it, it sends an acknowledgment back to A. Only after A receives the acknowledgment will it send the next message. However, this approach is very slow.
 
 <br/>
@@ -448,6 +448,101 @@ Now, at **Marker 4**, Carol can finally deliver Bob’s message. She compares th
 Once this is done, she checks the buffer for any queued messages. Since Alice's message has now been delivered, Carol is able to deliver Bob’s message as well. This approach ensures **causal delivery**.
 
 <em>This algorithm only works for causal broadcast.</em>
+
+<br/>
+
+<br/>
+
+## Part 6 - Implementing causal broadcast, uses of causality
+
+In the previous notes, we discussed that messages have vector clocks attached to it.
+
+### Causal broadcast algorithm:
+
+1. If a message sent by P1 is delivered at P2, increment P2's local clock in the P1 position.
+2. If a message is sent by a process, first increment its own position in its local clock, and include the local clock along with the message.
+3. A message sent by a process P1 is only delivered at P2 if, for the message's timestamp T (vector clock):
+```
+T[P1] = VC[P1] + 1 AND T[Pk] <= VC[Pk].
+
+T[P1] is the VC attached to the message from P1, and the RHS is the VC on P2. Same applies for the 2nd expression.
+
+Expression 1 indicates the following: Timestamp on the message from P1 makes it the next expected message.
+Expression 2 indicates the following: No missing messages from other processes.
+```
+
+Collectively, these are rules for when you can dleiver a message sent from P1 at P2 under causal broadcast.
+
+Note that for this algorithm, we only count the send events. The algorithm follows the working of vector clocks (i.e. subsumes the working of vector clocks.)
+
+<br/>
+
+Let's see one more example:
+
+![image tooltip here]({{ "/assets/distributed_systems/015_causal_broadcast_ex_2.jpeg" | relative_url }})
+
+<br/>
+
+Does this above algorithm establishes a total-order on messages? No. Causal delivery doesn't rule out total order anomalies! Refer the example of 2 clients and 2 replicas example. On the replicas, it will be okay to deliver under the causal boradcast algorithm, even though the replicas would have different values.
+
+In general, total-order is annoying to enforce, and unless not required, it is suggested to not enforece. We need something more than vector clocks.
+
+<br/>
+
+### Ways that potential causality (i.e. happens before relation) is used in ditributed systems:
+1. Determine order of events after the fact (for debugging,)
+2. Causal ordering of events as they're happening.
+3. Consistent global snapshots (not discussed yet, but relates to 1st point.) If `A -> B`, and B is in the snapshot, then A should be, too.
+
+<br/>
+
+How to take a global snapshot of a distributed system?
+
+![image tooltip here]({{ "/assets/distributed_systems/016_snapshot_error.jpeg" | relative_url }})
+
+Assume that a snapshot was taken for both the processes at 9:20 AM. Now, the time of day clocks would not necessarily be in sync. This is prone to errors. P2. says that it got a message before 9:20 AM, but P1's snapshot says it never happened. Time of day clocks won't be enough. We need some kind of an algorithm.
+
+<br/>
+
+### Chandy-Lamport algorithm:
+
+The concept of channels is used. A channel is a connection from one process to another.
+
+![image tooltip here]({{ "/assets/distributed_systems/017_channels.jpeg" | relative_url }})
+
+Let's see how channels are expressed in the above image:
+1. C12: channel from P1 to P2.
+2. C21: channel from P2 to P1.
+
+C12 is empty (no messages in flight.) C21 is not empty.
+
+**Channels will act like FIFO queues, enough to prevent FIFO violation.**
+
+<br/>
+
+The below image is how snapshots and markers. The algorithm will be disucssed in more depth in later parts.
+
+![image tooltip here]({{ "/assets/distributed_systems/018_snapshot_valid.jpeg" | relative_url }})
+
+<br/>
+
+Below are some examples of invalid snapshots (or snapshots that don't make any sense:)
+
+![image tooltip here]({{ "/assets/distributed_systems/019_invalid_snapshots.jpeg" | relative_url }})
+
+The Chandy-Lamport algorithm won't let you take a snapshot like the ones above.
+
+<br/>
+
+Below is one more example of a valid snapshot:
+
+![image tooltip here]({{ "/assets/distributed_systems/020_valid_snapshots_2.jpeg" | relative_url }})
+
+<br/>
+
+The Chandy-Lamport algorithm threads together all these individual snapshots, to give a global snapshot. Makers are not included in the snapshots.
+
+The point of this algorithm is looking at events that have already occured in a system, and then trying to take a snapshot of that system, which you could then use for things like debugging, or checking whether a certain property of the system is true.
 
 <br/>
 
